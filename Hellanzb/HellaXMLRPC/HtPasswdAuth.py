@@ -18,7 +18,7 @@ from twisted.web import static
 from twisted.web.resource import Resource
 
 import twisted.copyright
-if twisted.copyright.version >= '2.0.0':
+if twisted.copyright.version >= '2.0.0' or twisted.copyright.version >= '10.0.0':
     from twisted.web import http
 else:
     from twisted.protocols import http
