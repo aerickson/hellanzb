@@ -150,12 +150,12 @@ def scanQueueDir(firstRun = False, justScan = False):
                 # Delay enqueueing recently modified NZBs
                 if not isOldEnough(os.path.join(Hellanzb.QUEUE_DIR, file)):
                     continue
-                # ignore Mac OS X-created metainfo files from being enqueued
-                if string.find(file, ':2e_') != -1:
-                    info("skipping item %s..." % file)
-                    continue
-                else:
-                    newNZBs.append(os.path.join(Hellanzb.QUEUE_DIR, file))
+                # # ignore Mac OS X-created metainfo files from being enqueued
+                # if string.find(file, ':2e_') != -1:
+                #     info("skipping item %s..." % file)
+                #     continue
+                # else:
+                newNZBs.append(os.path.join(Hellanzb.QUEUE_DIR, file))
 
             elif os.path.normpath(os.path.join(Hellanzb.QUEUE_DIR, file)) in queuedMap:
                 queuedMap.pop(os.path.normpath(os.path.join(Hellanzb.QUEUE_DIR, file)))
