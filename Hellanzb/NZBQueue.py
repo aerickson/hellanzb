@@ -29,7 +29,7 @@ class HellanzbStateXMLParser(ContentHandler):
         self.currentTag = None
         self.currentAttrs = None
         self.skippedParContent = ''
-        
+
     def startElement(self, name, attrs):
         self.currentTag = name
         # <hellanzbState version="0.9-trunk">
@@ -52,17 +52,17 @@ class HellanzbStateXMLParser(ContentHandler):
             # order in its attributes and sort by it later
             if name == 'queued':
                 currentAttrs['order'] = len(Hellanzb.recoveredState.queued)
-                
+
             archiveName = currentAttrs['name']
             currentAttrs['id'] = int(currentAttrs['id'])
             IDPool.skipIds.append(currentAttrs['id'])
-            
+
             typeDict = getattr(Hellanzb.recoveredState, name)
             if currentAttrs is not None:
                 typeDict[archiveName] = currentAttrs
 
             self.currentAttrs = currentAttrs
-                
+
         elif name == 'skippedPar':
             if self.currentAttrs.has_key('skippedParSubjects'):
                 self.skippedParSubjects = self.currentAttrs['skippedParSubjects']
@@ -88,7 +88,7 @@ class RecoveredState(object):
         # These are maps of the archive name (the XML tag's content) to their
         # attributes. These will later be resynced to their associated objects
         self.downloading, self.processing, self.queued, self.newzbinCookie = {}, {}, {}, {}
-        
+
         self.version = None
 
     def getRecoveredDict(self, type, archiveName):
@@ -130,7 +130,12 @@ def scanQueueDir(firstRun = False, justScan = False):
     currentNZBs = []
     for file in os.listdir(Hellanzb.CURRENT_DIR):
         if Hellanzb.NZB_FILE_RE.search(file):
-            currentNZBs.append(os.path.join(Hellanzb.CURRENT_DIR, file))
+            # ignore Mac OS X-created metainfo files from being enqueued
+            if string.find(file, ':2e_') != -1:
+                info("skipping item %s..." % file)
+            else:
+                currentNZBs.append(os.path.join(Hellanzb.CURRENT_DIR, file))
+
 
     # See if we're resuming a nzb fetch
     resuming = False
@@ -167,7 +172,7 @@ def scanQueueDir(firstRun = False, justScan = False):
         queuedRecoveredState = Hellanzb.recoveredState.queued.copy()
 
     enqueueNZBs(newNZBs, writeQueue = not firstRun)
-            
+
     if firstRun:
         sortQueueFromRecoveredState(queuedRecoveredState)
 
@@ -198,8 +203,8 @@ def scanQueueDir(firstRun = False, justScan = False):
         nzb = Hellanzb.nzbQueue[0]
         nzbfilename = os.path.basename(nzb.nzbFileName)
         del Hellanzb.nzbQueue[0]
-    
-        # nzbfile will always be a absolute filename 
+
+        # nzbfile will always be a absolute filename
         nzbfile = os.path.join(Hellanzb.QUEUE_DIR, nzbfilename)
         move(nzbfile, Hellanzb.CURRENT_DIR)
 
@@ -211,7 +216,7 @@ def scanQueueDir(firstRun = False, justScan = False):
         # Resume the NZB in the CURRENT_DIR
         nzbfilename = currentNZBs[0]
         nzb = NZB.fromStateXML('downloading', nzbfilename)
-        
+
         nzbfilename = os.path.basename(nzb.nzbFileName)
         displayNotification = True
         del currentNZBs[0]
@@ -316,7 +321,7 @@ def sortQueueFromRecoveredState(queuedRecoveredState):
     onDiskQueue = [(archiveEntry['order'], archiveName) for archiveName, archiveEntry in \
                    queuedRecoveredState.iteritems()]
     onDiskQueue.sort()
-    
+
     unsorted = Hellanzb.nzbQueue[:]
     Hellanzb.nzbQueue = []
     arranged = []
@@ -330,7 +335,7 @@ def sortQueueFromRecoveredState(queuedRecoveredState):
         unsorted.remove(nzb)
     for nzb in unsorted:
         Hellanzb.nzbQueue.append(nzb)
-            
+
 def recoverStateFromDisk(filename = None):
     """ Load hellanzb state from the on disk XML """
     if filename == None:
@@ -354,7 +359,7 @@ def recoverStateFromDisk(filename = None):
             debug('Error while parsing STATE_XML_FILE: %s: %s: exception: %s' %
                   (filename, saxpe.getMessage(), saxpe.getException()))
             return
-        
+
         debug('recoverStateFromDisk recovered: %s' % str(Hellanzb.recoveredState))
 
         if len(Hellanzb.recoveredState.newzbinCookie):
@@ -366,7 +371,7 @@ def _writeStateXML(outFile):
     and their order in the queue, and smart par recovery information """
     writer = XMLWriter(outFile, 'utf-8', indent = 8)
     writer.declaration()
-    
+
     h = writer.start('hellanzbState', {'version': Hellanzb.version})
 
     Hellanzb.postProcessorLock.acquire()
@@ -382,7 +387,7 @@ def _writeStateXML(outFile):
     #                                                time.localtime()))
 
     # Delete the recoveredState data -- done with it
-    Hellanzb.recoveredState = RecoveredState() 
+    Hellanzb.recoveredState = RecoveredState()
 Hellanzb._writeStateXML = _writeStateXML
 
 def writeStateXML():
@@ -409,7 +414,7 @@ def writeStateXML():
     else:
         reactor.callFromThread(backupThenWrite)
 Hellanzb.writeStateXML = writeStateXML
-    
+
 def parseNZB(nzb, notification = 'Downloading', quiet = False):
     """ Parse the NZB file into the Queue. Unless the NZB file is deemed already fully
     processed at the end of parseNZB, tell the factory to start downloading it """
@@ -422,7 +427,7 @@ def parseNZB(nzb, notification = 'Downloading', quiet = False):
         findAndLoadPostponedDir(nzb)
         nzb.finalize(justClean = True)
         gc.collect()
-        
+
         info('Parsing: ' + os.path.basename(nzb.nzbFileName) + '...')
         if not Hellanzb.queue.parseNZB(nzb):
             Hellanzb.Daemon.beginDownload(nzb)
@@ -473,14 +478,14 @@ def ensureSafePostponedLoad(nzbFileName):
 
         for nzbl in cancelledClients:
             nzbl.deactivate()
-        
+
 def findAndLoadPostponedDir(nzb):
     """ Move a postponed working directory for the specified nzb, if one is found, to the
     WORKING_DIR """
     def fixNZBFileName(nzb):
         if os.path.normpath(os.path.dirname(nzb.destDir)) == os.path.normpath(Hellanzb.POSTPONED_DIR):
             nzb.destDir = Hellanzb.WORKING_DIR
-        
+
     nzbfilename = nzb.nzbFileName
     d = os.path.join(Hellanzb.POSTPONED_DIR, archiveName(nzbfilename))
     if os.path.isdir(d):
@@ -504,7 +509,7 @@ def findAndLoadPostponedDir(nzb):
         move(d, Hellanzb.WORKING_DIR)
         Hellanzb.queue.unpostpone(nzb)
         ensureSafePostponedLoad(nzb.nzbFileName)
-        
+
         info('Loaded postponed directory: ' + archiveName(nzbfilename))
 
         fixNZBFileName(nzb)
@@ -525,7 +530,7 @@ def moveUp(nzbId, shift = 1, moveDown = False):
     except:
         debug('Invalid shift: ' + str(shift))
         return False
-            
+
     i = 0
     foundNzb = None
     for nzb in Hellanzb.nzbQueue:
@@ -533,7 +538,7 @@ def moveUp(nzbId, shift = 1, moveDown = False):
             foundNzb = nzb
             break
         i += 1
-        
+
     if not foundNzb:
         return False
 
@@ -574,7 +579,7 @@ def dequeueNZBs(nzbIdOrIds, quiet = False):
         except Exception:
             error = True
             continue
-        
+
         for nzb in Hellanzb.nzbQueue:
             if nzb.id == nzbId:
                 found.append(nzb)
@@ -588,7 +593,7 @@ def dequeueNZBs(nzbIdOrIds, quiet = False):
         move(nzb.nzbFileName, os.path.join(Hellanzb.DEQUEUED_NZBS_DIR,
                                            os.path.basename(nzb.nzbFileName)))
         Hellanzb.nzbQueue.remove(nzb)
-        
+
     writeStateXML()
     return not error
 
@@ -618,7 +623,7 @@ def enqueueNZBData(nzbFilename, nzbData):
 
     enqueueNZBs(tempLocation)
     os.remove(tempLocation)
-    
+
 def enqueueNZBs(nzbFileOrFiles, next = False, writeQueue = True, category = None):
     """ add one or a list of nzb files to the end of the queue """
     if isinstance(nzbFileOrFiles, list) or isinstance(nzbFileOrFiles, tuple):
@@ -628,7 +633,7 @@ def enqueueNZBs(nzbFileOrFiles, next = False, writeQueue = True, category = None
 
     if len(newNzbFiles) == 0:
         return False
-    
+
     for nzbFile in newNzbFiles:
         if validNZB(nzbFile):
             if os.path.normpath(os.path.dirname(nzbFile)) != os.path.normpath(Hellanzb.QUEUE_DIR):
@@ -682,10 +687,10 @@ def enqueueNZBs(nzbFileOrFiles, next = False, writeQueue = True, category = None
             except (IOError, OSError), e:
                 error('Unable to move invalid NZB: %s out of the way' % nzbFile)
                 debug('Unable to move invalid NZB: %s out of the way' % nzbFile, e)
-                
+
     if writeQueue:
         writeStateXML()
-            
+
 def enqueueNextNZBs(nzbFileOrFiles):
     """ enqueue one or more nzbs to the beginning of the queue """
     return enqueueNZBs(nzbFileOrFiles, next = True)
@@ -702,7 +707,7 @@ def nextNZBId(nzbId):
     for nzb in Hellanzb.nzbQueue:
         if nzb.id == nzbId:
             foundNZB = nzb
-            
+
     if not foundNZB:
         return True
 
@@ -723,10 +728,10 @@ def lastNZB(nzbId):
     for nzb in Hellanzb.nzbQueue:
         if nzb.id == nzbId:
             foundNZB = nzb
-            
+
     if not foundNZB:
         return True
-    
+
     Hellanzb.nzbQueue.remove(foundNZB)
     Hellanzb.nzbQueue.append(foundNZB)
 
@@ -749,10 +754,10 @@ def moveNZB(nzbId, index):
     for nzb in Hellanzb.nzbQueue:
         if nzb.id == nzbId:
             foundNZB = nzb
-            
+
     if not foundNZB:
         return True
-    
+
     Hellanzb.nzbQueue.remove(foundNZB)
     Hellanzb.nzbQueue.insert(index - 1, foundNZB)
 
@@ -767,15 +772,15 @@ def listQueue(includeIds = True, convertToUnicode = True):
         if includeIds:
             name = archiveName(os.path.basename(nzb.nzbFileName))
             rarPassword = nzb.rarPassword
-            
+
             if convertToUnicode:
                 name = toUnicode(name)
                 rarPassword = toUnicode(rarPassword)
-                
+
             member = {'id': nzb.id,
                       'nzbName': name,
                       'is_par_recovery': nzb.isParRecovery}
-            
+
             if rarPassword is not None:
                 member['rarPassword'] = rarPassword
             if nzb.msgid is not None:
@@ -786,7 +791,7 @@ def listQueue(includeIds = True, convertToUnicode = True):
             member = os.path.basename(nzb.nzbFileName)
         members.append(member)
     return members
-    
+
 """
 Copyright (c) 2005 Philip Jenvey <pjenvey@groovie.org>
 All rights reserved.
